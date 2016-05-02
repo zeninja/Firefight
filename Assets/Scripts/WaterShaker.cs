@@ -28,6 +28,4 @@ public class WaterShaker : MonoBehaviour {
 		yield return new WaitForSeconds(Random.Range(minWait, maxWait));
 		StartCoroutine("ShakeScale");
 	}
-
-
 }

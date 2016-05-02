@@ -4,6 +4,7 @@ using System.Collections.Generic;
 
 public class PlayerController : MonoBehaviour {
 
+	HoseController hoseController;
 	public Transform water;
 	public Transform axe;
 
@@ -15,22 +16,9 @@ public class PlayerController : MonoBehaviour {
 	float inputVertical;
 	bool canMove = true;
 
-	public HoseDisplay hose;
-	[System.Serializable]
-	public class HoseDisplay {
-		public GameObject segmentPrefab;
-		public Sprite straight;
-		public Sprite turn;
-
-		[System.NonSerialized]
-		public Vector2 lastMove = new Vector2(0, 1);
-
-		public Dictionary<Vector2, HoseType> hoseDirectory = new Dictionary<Vector2, HoseType>();
-	}
-
 	// Use this for initialization
 	void Start () {
-		
+		hoseController = GetComponent<HoseController>();
 	}
 	
 	// Update is called once per frame
@@ -78,265 +66,29 @@ public class PlayerController : MonoBehaviour {
 
 	void MoveAndPlaceHose() {
 		Vector2 targetMovePos = transform.position;
-
-		if(!GameManager.gridStatus.ContainsKey(targetPos) || GameManager.gridStatus[targetPos].CompareTag("Fire") || GameManager.gridStatus[targetPos].CompareTag("Hose")) {
-			GameObject hoseSegment = Instantiate(hose.segmentPrefab) as GameObject;
-			hoseSegment.transform.position = transform.position;
-
-			if (hose.hoseDirectory.ContainsKey(targetPos)) {
-				// Target position is occuppied, meaning we are crossing over the hose
-				GameObject jumpSegment = Instantiate(hose.segmentPrefab) as GameObject;
-				jumpSegment.transform.position = targetPos;
-
-	//			hose.hoseDirectory[targetPos] = HoseType.cross;
-
-				#region Horizontal Jumping
-				switch((int)moveOffset.x) {
-					case 1:
-						// Jumping RIGHT
-						GetComponent<SpriteManager>().SetDirection(SpriteManager.Direction.Right);
-						jumpSegment.transform.Rotate(new Vector3(0, 0, 90));
-						hose.hoseDirectory[targetPos] = HoseType.horizontal;
-
-
-						if(hose.lastMove.x > 0) {
-							// Last move was also RIGHT
-							hose.hoseDirectory[transform.position] = HoseType.horizontal;	
-							hoseSegment.transform.Rotate(new Vector3(0, 0, 90));
-
-						} else {
-							// Last move was VERTICAL, we are TURNING
-							hose.hoseDirectory[transform.position] = HoseType.corner;
-							hoseSegment.GetComponent<SpriteRenderer>().sprite = hose.turn;
-
-							if(hose.lastMove.y > 0) {
-								// No need to rotate, this is the default rotation;
-							} else {
-								hoseSegment.transform.Rotate(new Vector3(0, 0, 90));
-							}
-						}
-						break;
-					case -1:
-						// Jumping LEFT
-						GetComponent<SpriteManager>().SetDirection(SpriteManager.Direction.Left);
-						jumpSegment.transform.Rotate(new Vector3(0, 0, 90));
-						hose.hoseDirectory[targetPos] = HoseType.horizontal;
-
-						if(hose.lastMove.x < 0) {
-							// Last move was also LEFT
-							hose.hoseDirectory[transform.position] = HoseType.horizontal;	
-							hoseSegment.transform.Rotate(new Vector3(0, 0, 90));
-						} else {
-							// Last move was VERTICAL, we are TURNING
-							hose.hoseDirectory[transform.position] = HoseType.corner;
-							hoseSegment.GetComponent<SpriteRenderer>().sprite = hose.turn;
-
-							if(hose.lastMove.y > 0) {
-								hoseSegment.transform.Rotate(new Vector3(0, 0, 270));
-							} else {
-								hoseSegment.transform.Rotate(new Vector3(0, 0, 180));
-							}
-						}
-						break;
-				}
-				#endregion
-
-				#region Vertical Jumping
-				switch((int)moveOffset.y) {
-					case 1:
-						// Moving UP
-						GetComponent<SpriteManager>().SetDirection(SpriteManager.Direction.Up);
-						hose.hoseDirectory[targetPos] = HoseType.vertical;
-
-						if(hose.lastMove.y > 0) {
-							// Last move was also UP
-							// Do nothing, this is the default rotation
-							hose.hoseDirectory[transform.position] = HoseType.vertical;
-						} else if(hose.lastMove.x != 0) {
-							// Last move was horizontal, we are TURNING
-							hose.hoseDirectory[transform.position] = HoseType.corner;	
-							hoseSegment.GetComponent<SpriteRenderer>().sprite = hose.turn;
-
-							if(hose.lastMove.x > 0) {
-								// Turning RIGHT
-								hoseSegment.transform.Rotate(new Vector3(0, 0, 180));
-							} else {
-								// Turning LEFT
-								hoseSegment.transform.Rotate(new Vector3(0, 0, 90));
-							}
-						}
-						break;
-
-					case -1:
-						// Moving DOWN
-						GetComponent<SpriteManager>().SetDirection(SpriteManager.Direction.Down);
-						hose.hoseDirectory[targetPos] = HoseType.vertical;
-
-						if(hose.lastMove.y < 0) {
-							// Last move was also DOWN
-							// Do nothing, this is the default rotation
-							hose.hoseDirectory[transform.position] = HoseType.vertical;
-						} else if(hose.lastMove.x != 0) {
-							// Last move was horizontal, we are TURNING
-							hose.hoseDirectory[transform.position] = HoseType.corner;
-							hoseSegment.GetComponent<SpriteRenderer>().sprite = hose.turn;
-
-							if(hose.lastMove.x > 0) {
-								// Turning RIGHT
-								hoseSegment.transform.Rotate(new Vector3(0, 0, 270));
-							} else {
-								// Turning LEFT
-								// Do nothing, this is the default rotation
-							}
-						}
-						break;
-				}
-				#endregion
-
-				// Increment the move offset so that we "JUMP", this is pretty janky
-				GameManager.gridStatus[(Vector2)transform.position + moveOffset] = jumpSegment;
-				targetMovePos = (Vector2)transform.position + moveOffset * 2;
-
-				// Set up the reference so that the hose leaks
-				jumpSegment.GetComponent<HoseSegment>().player = this;
-				StartCoroutine("AddJumpSegment", jumpSegment);
-			} else {
-				// Target position is empty
-				
-				#region Horizontal Movement
-				switch((int)moveOffset.x) {
-					case 1:
-						// Moving RIGHT
-						GetComponent<SpriteManager>().SetDirection(SpriteManager.Direction.Right);
-
-						if(hose.lastMove.x > 0) {
-							// Last move was also RIGHT
-							hose.hoseDirectory[transform.position] = HoseType.horizontal;	
-							hoseSegment.transform.Rotate(new Vector3(0, 0, 90));
-						} else if(hose.lastMove.y != 0) {
-							// Last move was VERTICAL, were TURNING
-							hose.hoseDirectory[transform.position] = HoseType.corner;	
-							hoseSegment.GetComponent<SpriteRenderer>().sprite = hose.turn;
-
-							if(hose.lastMove.y > 0) {
-								// No need to rotate, this is the default rotation;
-
-							} else {
-								hoseSegment.transform.Rotate(new Vector3(0, 0, 90));
-							}
-						}
-						break;
-
-					case -1:
-						// Moving LEFT
-						GetComponent<SpriteManager>().SetDirection(SpriteManager.Direction.Left);
-
-						if(hose.lastMove.x < 0) {
-							// Last move was also LEFT
-							hose.hoseDirectory[transform.position] = HoseType.horizontal;	
-							hoseSegment.transform.Rotate(new Vector3(0, 0, 90));
-						} else if(hose.lastMove.y != 0) {
-							// Last move was VERTICAL, were TURNING
-							hose.hoseDirectory[transform.position] = HoseType.corner;	
-							hoseSegment.GetComponent<SpriteRenderer>().sprite = hose.turn;
-
-							if(hose.lastMove.y > 0) {
-								// Turning UP
-								hoseSegment.transform.Rotate(new Vector3(0, 0, 270));
-							} else {
-								// Turning DOWN
-								hoseSegment.transform.Rotate(new Vector3(0, 0, 180));
-							}
-						}
-
-						break;
-				}
-				#endregion
-
-				#region Vertical Movement
-				switch((int)moveOffset.y) {
-					case 1:
-						// Moving UP
-						GetComponent<SpriteManager>().SetDirection(SpriteManager.Direction.Up);
-
-						if(hose.lastMove.y > 0) {
-							// Last move was also UP
-							// Do nothing, this is the default rotation
-							hose.hoseDirectory[transform.position] = HoseType.vertical;
-						} else if(hose.lastMove.x != 0) {
-							// Last move was horizontal, we are TURNING
-							hose.hoseDirectory[transform.position] = HoseType.corner;	
-							hoseSegment.GetComponent<SpriteRenderer>().sprite = hose.turn;
-
-							if(hose.lastMove.x > 0) {
-								// Turning RIGHT
-								hoseSegment.transform.Rotate(new Vector3(0, 0, 180));
-							} else {
-								// Turning LEFT
-								hoseSegment.transform.Rotate(new Vector3(0, 0, 90));
-							}
-						}
-						break;
-
-					case -1:
-						// Moving DOWN
-						GetComponent<SpriteManager>().SetDirection(SpriteManager.Direction.Down);
-
-						if(hose.lastMove.y < 0) {
-							// Last move was also DOWN
-							// Do nothing, this is the default rotation
-							hose.hoseDirectory[transform.position] = HoseType.vertical;
-						} else if(hose.lastMove.x != 0) {
-							// Last move was horizontal, we are TURNING
-							hose.hoseDirectory[transform.position] = HoseType.corner;
-							hoseSegment.GetComponent<SpriteRenderer>().sprite = hose.turn;
-
-							if(hose.lastMove.x > 0) {
-								// Turning RIGHT
-								hoseSegment.transform.Rotate(new Vector3(0, 0, 270));
-							} else {
-								// Turning LEFT
-								// Do nothing, this is the default rotation
-							}
-						}
-						break;
-				}
-				#endregion
-
-				// Move the player
+		if (!GameManager.gridStatus.ContainsKey(targetPos) || GameManager.gridStatus[targetPos].CompareTag("Fire") || GameManager.gridStatus[targetPos].CompareTag("Hose")) {
+			if (!HoseController.hoseDictionary.ContainsKey(targetMovePos + moveOffset)) {
+				// Target move position is empty
+				hoseController.AddSegment(transform.position, moveOffset);
 				targetMovePos = (Vector2)transform.position + moveOffset;
-			}
-
-			// Set up the reference so that the hose leaks
-			hoseSegment.GetComponent<HoseSegment>().player = this;
-			HoseController.hoseList.Add(hoseSegment);
-			hose.lastMove = moveOffset;
-
-			// Update the Game manager's grid, and replace an object if necessary
-			if(!GameManager.gridStatus.ContainsKey(transform.position)) {
-				GameManager.gridStatus.Add(transform.position, hoseSegment);
 			} else {
-				// This should ONLY replace other hose segments
-				// TODO: replace with a CROSS instead of just the new segment
-				GameManager.gridStatus[transform.position] = hoseSegment;
-			}
+				// Target move position contains a hose
+				if (!HoseController.hoseDictionary.ContainsKey((Vector2)transform.position + moveOffset * 2)) {
 
+					hoseController.AddSegment(transform.position, moveOffset);
+					hoseController.AddSegment(targetPos, moveOffset);
+					targetMovePos = (Vector2)transform.position + moveOffset * 2;
+				}
+			}
 		} else {
 			// Trigger obstacles etc.
 			GameManager.gridStatus[targetPos].SendMessage("Activate", SendMessageOptions.DontRequireReceiver);
 		}
-
 		transform.position = targetMovePos;
 		CheckAvailableMoves();
+		hoseController.HandlePlayerMove();
 	}
-
-	IEnumerator AddJumpSegment(GameObject jumpSegment) {
-		// Making this a coroutine (and waiting til the end of the frame) so that it adds the segments in the correct order
-		// Could probably use an invoke?? or something else?
-		yield return new WaitForEndOfFrame();
-		HoseController.hoseList.Add(jumpSegment);
-	}
-
+	
 	void CheckAvailableMoves() {
 		int numAvailableMoves = 0;
 
@@ -355,17 +107,15 @@ public class PlayerController : MonoBehaviour {
 		// Spray water to extinguish fires and trigger obstacles
 		water.GetComponent<WaterSpray>().startPos = transform.position;
 		water.GetComponent<WaterSpray>().direction = moveOffset;
-		water.GetComponent<WaterSpray>().SprayWater();
-		HoseController.LeakHose();
+		water.GetComponent<WaterSpray>().SprayWater(true);
 	}
 
 	#region Helper Functions
 	bool OutOfBounds(Vector2 testDirection) {
 		Vector2 testPos = (Vector2)transform.position + testDirection;
-		if (hose.hoseDirectory.ContainsKey(testPos)) {
-
-			if ((testDirection.x != 0 && hose.hoseDirectory[testPos] == HoseType.vertical) || 
-				(testDirection.y != 0 && hose.hoseDirectory[testPos] == HoseType.horizontal)) {
+		if (HoseController.hoseDictionary.ContainsKey(testPos)) {
+			if ((testDirection.x != 0 && HoseController.hoseDictionary[testPos].type == HoseType.vertical) || 
+				(testDirection.y != 0 && HoseController.hoseDictionary[testPos].type == HoseType.horizontal)) {
 				testPos += testDirection;
 			}
 		}
@@ -376,19 +126,19 @@ public class PlayerController : MonoBehaviour {
 	bool TargetPosInvalid(Vector2 testDirection) {
 		Vector2 testPos = (Vector2)transform.position + testDirection;
 
-		if(hose.hoseDirectory.ContainsKey(testPos)) {
+		if(HoseController.hoseDictionary.ContainsKey(testPos)) {
 			// We can only jump across spaces of the opposite type
-			if (testDirection.x != 0 && hose.hoseDirectory[testPos] != HoseType.vertical) {
+			if (testDirection.x != 0 && HoseController.hoseDictionary[testPos].type != HoseType.vertical) {
 //				Debug.Log(testDirection + ": TargetPosInvalid1");
 				return true;
 			}
 
-			if (testDirection.y != 0 && hose.hoseDirectory[testPos] != HoseType.horizontal) {
+			if (testDirection.y != 0 && HoseController.hoseDictionary[testPos].type != HoseType.horizontal) {
 //				Debug.Log(testDirection + ": TargetPosInvalid2");
 				return true;
 			}
 
-			if (hose.hoseDirectory.ContainsKey(testPos) && hose.hoseDirectory.ContainsKey(testPos + testDirection)) {
+			if (HoseController.hoseDictionary.ContainsKey(testPos) && HoseController.hoseDictionary.ContainsKey(testPos + testDirection)) {
 				// We can't jump across two consecutive full spaces
 //				Debug.Log(testDirection + ": TargetPosInvalid3.");
 				return true;

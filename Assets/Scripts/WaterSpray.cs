@@ -7,64 +7,45 @@ public class WaterSpray : MonoBehaviour {
 	public int affectedSquares = 1;
 
 	public float activeDuration = .2f;
-	GameObject[] sprays = new GameObject[3];
 
-	void Awake() {
+	bool willSpray;
+
+	void Start() {
 		startPos = transform.position;
-		for (int i = 0; i < transform.childCount; i++) {
-			sprays[i] = transform.GetChild(i).gameObject;
-		}
-		Deactivate();
+		EndSpray();
 	}
 
-	public void SprayWater() {
+	public void SprayWater(bool spray) {
+		willSpray = spray;
 		RotateGraphics();
 
-		for(int i = 0; i < affectedSquares; i++) {
-			Vector2 targetPos = startPos + direction * affectedSquares;
-			GameManager.GetInstance().HandleWaterSpray(targetPos);
-		}
-		Activate();
-	}
+		if(willSpray) {
+			gameObject.SetActive(true);
+			transform.localScale = Vector2.one;
 
-	void Activate() {
-		for (int i = 0; i < sprays.Length; i++) {
-			sprays[i].SetActive(true);
-			sprays[i].transform.localScale = Vector2.one;
-			sprays[i].transform.localPosition *= 2f;
+			for(int i = 0; i < affectedSquares; i++) {
+				Vector2 targetPos = startPos + direction * (i + 1);
+				GameManager.GetInstance().HandleWaterSpray(targetPos);
+			}
 		}
 
-//		if(disappear) {
-//			Invoke("Deactivate", activeDuration);
-//		} else {
-			Invoke("ShrinkGraphics", activeDuration);
+//		if(!transform.parent.CompareTag("Player")) {
+			Invoke("EndSpray",  activeDuration);
 //		}
 	}
 
-	void Deactivate() {
-		for (int i = 0; i < sprays.Length; i++) {
-			sprays[i].SetActive(false);
-		}
-	}
-
-	void ShrinkGraphics() {
-		for(int i = 0; i < sprays.Length; i++) {
-			sprays[i].transform.localScale = Vector3.one * .3f;
-			sprays[i].transform.localPosition *= .25f;
-		}
+	void EndSpray() {
+//		if (willSpray) {
+			gameObject.SetActive(false);
+//		} else {
+//			transform.localScale = Vector2.one * .5f;
+//		}
 	}
 
 	void RotateGraphics() {
 		float rot = 0;
-
-		if (direction.x != 0) {
-			rot = direction.x > 0 ? -90 : 90;
-		}
-
-		if (direction.y != 0) {
-			rot = direction.y > 0 ? 0 : 180;
-		}
-
+		if (direction.x != 0) { rot = direction.x > 0 ? -90 : 90; }
+		if (direction.y != 0) { rot = direction.y > 0 ?   0 : 180; }
 		transform.rotation = Quaternion.Euler(new Vector3(0, 0, rot));
 	}
 }

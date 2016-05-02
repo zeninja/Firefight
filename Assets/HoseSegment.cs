@@ -13,32 +13,23 @@ public class HoseSegment : MonoBehaviour {
 
 	public bool willSpray;
 
-	// Use this for initialization
-	void Start () {
-	}
-	
-	// Update is called once per frame
-	void Update () {
-
-	}
-
 	public void LeakHose() {
 		waterSpray = transform.GetChild(0).GetComponent<WaterSpray>();
 
-		if (player.hose.hoseDirectory[transform.position] != HoseType.corner &&
-		    player.hose.hoseDirectory[transform.position] != HoseType.cross) {
+		if (HoseController.hoseDictionary[transform.position].type != HoseType.corner &&
+			HoseController.hoseDictionary[transform.position].type != HoseType.cross) {
 
 		    waterSpray.startPos = transform.position;
 
-		    if(player.hose.hoseDirectory[transform.position] == HoseType.horizontal) {
+			if(HoseController.hoseDictionary[transform.position].type == HoseType.horizontal) {
 				waterSpray.direction = Vector2.up;
 		    }
 
-			if(player.hose.hoseDirectory[transform.position] == HoseType.vertical) {
+			if(HoseController.hoseDictionary[transform.position].type == HoseType.vertical) {
 				waterSpray.direction = Vector2.right;
 		    }
 
-			waterSpray.SprayWater();
+			waterSpray.SprayWater(willSpray);
 		}
 	}
 }
